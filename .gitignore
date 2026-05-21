@@ -1,0 +1,28 @@
+# ChromaDB — binary vector database, contains local paths
+vectordb/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Claude Code local config
+.claude/
+
+# Runtime logs — contain personal conversation insights
+logs/
+
+# User knowledge base — personal notes, chat histories
+knowledge/
+
+# Personal core files — filled versions contain private data
+core/about-me.md
+core/persona-prompt.md
+
+# Desktop shortcut (generated locally)
+管家.bat
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini

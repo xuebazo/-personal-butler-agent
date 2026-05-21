@@ -1,0 +1,17 @@
+api:
+  deepseek_key: "${DEEPSEEK_API_KEY}"
+  deepseek_base_url: "https://api.deepseek.com"
+
+models:
+  chat: "deepseek-v4-pro"
+  embedding: "paraphrase-multilingual-MiniLM-L12-v2"
+
+retrieval:
+  n_results: 5
+  core_weight: 0.5
+
+paths:
+  vectordb: "~/.butler/vectordb"
+  core: "~/.butler/core"
+  knowledge: "~/.butler/knowledge"
+  logs: "~/.butler/logs"
