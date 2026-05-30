@@ -31,7 +31,13 @@ def retrieve(query: str, n_results: int = None) -> str:
 
     scored = []
     for doc, meta, dist in zip(docs, metas, distances):
-        weight = core_weight if meta["type"] in ("core", "logs") else 1.0
+        t = meta.get("type", "")
+        if t in ("core", "logs"):
+            weight = core_weight  # 0.5 — 最高优先级
+        elif t == "saved_search":
+            weight = 0.7  # 用户确认的网络搜索结果，次于个人资料
+        else:
+            weight = 1.0  # notes/chats 等默认权重
         score = dist * weight
         scored.append((score, doc, meta))
 

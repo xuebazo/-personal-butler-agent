@@ -20,6 +20,7 @@ from datetime import datetime
 
 from shared import config
 from query import retrieve
+from search import should_search, search, format_search_results
 
 from openai import OpenAI
 
@@ -45,6 +46,9 @@ scripts_dir = Path(__file__).parent
 
 logs_dir = Path(config["paths"]["logs"]).expanduser()
 logs_dir.mkdir(parents=True, exist_ok=True)
+
+knowledge_other_dir = Path(config["paths"]["knowledge"]).expanduser() / "other"
+knowledge_other_dir.mkdir(parents=True, exist_ok=True)
 
 
 # ─── 人格加载 ────────────────────────────────────────────
@@ -130,6 +134,9 @@ SESSION_SUMMARY_PROMPT = """以下是刚刚结束的一段对话记录。
 请从这段对话中提炼出对这个人的新洞察（如果有的话）。
 关注：他的反应模式、隐含偏好、满意/不满意的信号、新出现的关注点。
 
+重要：不要从网络搜索结果中提取洞察。只关注用户本人的表达和反应。
+如果对话中出现了 [网络搜索] 标记的内容，忽略它——那不是用户说的话。
+
 输出格式（每条一行）：
 [洞察] 内容（不超过30字）
 
@@ -140,6 +147,14 @@ def save_session_insights(history: list):
     """对话结束后，提炼洞察并写入日志"""
     if len(history) < 2:
         return
+
+    # 单日洞察频率限制：超过阈值跳过，防止异常批量消耗 API
+    today = datetime.now().strftime("%Y-%m-%d")
+    log_file = logs_dir / f"insights-{today}.md"
+    if log_file.exists():
+        daily_lines = log_file.read_text(encoding="utf-8").count("\n")
+        if daily_lines > 200:  # ~50 条洞察
+            return
 
     conversation = "\n".join([
         f"{'用户' if m['role'] == 'user' else '管家'}: {m['content']}"
@@ -164,8 +179,6 @@ def save_session_insights(history: list):
         if not insights:
             return
 
-        today = datetime.now().strftime("%Y-%m-%d")
-        log_file = logs_dir / f"insights-{today}.md"
         is_new = not log_file.exists() or log_file.stat().st_size == 0
 
         timestamp = datetime.now().strftime("%H:%M")
@@ -253,12 +266,14 @@ def handle_bad_feedback(last_reply: str) -> str:
 
 def chat():
     print("╭─────────────────────────────────────╮")
-    print("│  个人管家已就位（DeepSeek + 本地向量）│")
-    print("│  bad · reload · clear · exit        │")
+    print("│  个人管家已就位（DeepSeek + 联网搜索）│")
+    print("│  bad · save · reload · clear · exit │")
     print("╰─────────────────────────────────────╯\n")
 
     history = []
     last_reply = ""
+    last_search_data = None
+    last_search_query = ""
 
     while True:
         try:
@@ -283,6 +298,7 @@ def chat():
             save_session_insights(history)
             history.clear()
             last_reply = ""
+            last_search_data = None
             print("（对话历史已清空，洞察已保存）\n")
             continue
 
@@ -312,8 +328,42 @@ def chat():
                 history.append({"role": "assistant", "content": f"[修正] {corrected}"})
             continue
 
-        # ── 正常对话流程（只检索一次）──
+        if user_input.lower() == "save":
+            if not last_search_data:
+                print("（还没有可以保存的搜索结果）\n")
+                continue
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            filename = f"search-{timestamp}.md"
+            filepath = knowledge_other_dir / filename
+
+            safe_query = last_search_query.replace("#", "＃").replace("\n", " ")
+            content = f"# 搜索结果 · {safe_query}\n\n"
+            content += format_search_results(last_search_data)
+
+            filepath.write_text(content, encoding="utf-8")
+            print(f"✓ 已保存到 knowledge/other/{filename}")
+            print("  运行 reload 或重新启动管家后，保存的内容将可被检索。\n")
+            last_search_data = None
+            continue
+
+        # ── 正常对话流程（检索 → 搜索 → 意图）──
         context = retrieve(user_input)
+
+        search_context = ""
+        if should_search(user_input):
+            print("  🔍 检测到实时信息需求，正在联网搜索...")
+            search_data = search(user_input)
+            if search_data:
+                search_context = format_search_results(search_data)
+                last_search_data = search_data
+                last_search_query = user_input
+                print(f"  ✓ 已获取搜索结果")
+            else:
+                print("  ⚠ 搜索不可用，将仅依赖本地知识库")
+
+        if search_context:
+            context = context + "\n\n" + search_context if context else search_context
+
         inferred_intent = infer_intent(user_input, context)
         system = build_system_prompt(context, inferred_intent)
 
@@ -338,6 +388,14 @@ def chat():
 
 def single_query(question: str):
     context = retrieve(question)
+
+    if should_search(question):
+        search_data = search(question)
+        if search_data:
+            search_context = format_search_results(search_data)
+            if search_context:
+                context = context + "\n\n" + search_context if context else search_context
+
     inferred_intent = infer_intent(question, context)
     system = build_system_prompt(context, inferred_intent)
     try:

@@ -10,6 +10,45 @@ retrieval:
   n_results: 5
   core_weight: 0.5
 
+search:
+  provider: "tavily"
+  api_key: "${TAVILY_API_KEY}"
+  max_results: 5
+  timeout: 10
+  trigger_keywords:
+    - "最新"
+    - "今天"
+    - "新闻"
+    - "天气"
+    - "价格"
+    - "股票"
+    - "2026"
+    - "2027"
+    - "现在"
+    - "实时"
+    - "趋势"
+    - "更新"
+    - "当前"
+    - "最近"
+    - "今早"
+    - "昨晚"
+    - "本周"
+    - "本月"
+    - "预测"
+    - "行情"
+    - "汇率"
+    - "发生了什么"
+    - "刚刚"
+    - "搜索"
+    - "查一下"
+
+learning:
+  n_results: 5
+  subjects:
+    - ml
+    - systems
+  collection_name: "learning_materials"
+
 paths:
   vectordb: "~/.butler/vectordb"
   core: "~/.butler/core"

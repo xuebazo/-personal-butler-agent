@@ -8,6 +8,7 @@
      每次运行全量重新蒸馏，确保输出完整。
 """
 
+import sys
 from pathlib import Path
 from datetime import datetime
 
@@ -23,7 +24,9 @@ def _get_client():
     if _client is None:
         key = config["api"]["deepseek_key"]
         if not key:
-            raise RuntimeError("DEEPSEEK_API_KEY env var is not set.")
+            print("ERROR: DEEPSEEK_API_KEY env var is not set.")
+            print("Set it via: set DEEPSEEK_API_KEY=sk-... (Windows) or export DEEPSEEK_API_KEY=... (Unix)")
+            sys.exit(1)
         _client = OpenAI(
             api_key=key,
             base_url=config["api"]["deepseek_base_url"]

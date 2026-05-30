@@ -128,7 +128,7 @@ def ingest_all():
         (base / "core", "core"),
         (base / "knowledge" / "notes", "notes"),
         (base / "knowledge" / "chats", "chats"),
-        (base / "knowledge" / "other", "other"),
+        (base / "knowledge" / "other", "saved_search"),
         (base / "logs", "logs"),
     ]
 

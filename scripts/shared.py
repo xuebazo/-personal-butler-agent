@@ -55,6 +55,15 @@ collection = db_client.get_or_create_collection(
     metadata={"hnsw:space": "cosine"}
 )
 
+def get_learning_collection() -> chromadb.Collection:
+    """返回学习材料专用 collection，与 personal_context 物理隔离"""
+    collection_name = config.get("learning", {}).get("collection_name", "learning_materials")
+    return db_client.get_or_create_collection(
+        name=collection_name,
+        metadata={"hnsw:space": "cosine"}
+    )
+
+
 # ── 本地 embedding 模型（懒加载）────────────────────────────
 
 _embedding_model = None
